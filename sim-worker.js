@@ -1,4 +1,4 @@
-/* sim-worker.js — Monte Carlo + auto-size (real terms) v6 */
+/* sim-worker.js — Monte Carlo + auto-size (real terms) */
 /* Always solve Start Stocks Needed using the user's actual Starting Cash (partial buffer allowed).
  * Mark infeasible only if even unlimited stocks cannot reach ≥90% success under the sell-after-recovery rule.
  */
@@ -112,23 +112,37 @@ function monteCarlo(S0,needs,coverInit,retireAge,trials=1000,mean=0.05,stdev=0.1
   for(let i=0;i<trials;i++){const seed=baseSeed+i*9973; const {firstTrouble,stocksSeries,coverageSeries}=simulateTrial(S0,needs,coverInit,retireAge,mean,stdev,seed);
     successFlags[i]=(firstTrouble===null); troubleAges[i]=firstTrouble;
     for(let y=0;y<H;y++){stocksByYear[y].push(stocksSeries[y]); coverageByYear[y].push(coverageSeries[y]);}}
-  const successPct=100*(successFlags.filter(Boolean).length/trials);
+  const successes = successFlags.filter(Boolean).length;
+  const successPct=100*(successes/trials);
+  const p = successes/Math.max(1,trials);
+  const stderrPct = 100*Math.sqrt(Math.max(0,p*(1-p))/Math.max(1,trials));
   const failingAges=troubleAges.filter(v=>v!==null); let firstTroubleYearAge=null; if(failingAges.length>0){ firstTroubleYearAge=Math.round(quantile(failingAges,0.1)); }
   const p10Stocks=stocksByYear.map(a=>quantile(a,0.1)), p50Stocks=stocksByYear.map(a=>quantile(a,0.5)), p90Stocks=stocksByYear.map(a=>quantile(a,0.9));
   const p10Cover=coverageByYear.map(a=>quantile(a,0.1)), p50Cover=coverageByYear.map(a=>quantile(a,0.5)), p90Cover=coverageByYear.map(a=>quantile(a,0.9));
-  return { successPct, firstTroubleYearAge, stocks:{p10:p10Stocks,p50:p50Stocks,p90:p90Stocks}, coverage:{p10:p10Cover,p50:p50Cover,p90:p90Cover} };
+  return { successPct, stderrPct, trials, firstTroubleYearAge, stocks:{p10:p10Stocks,p50:p50Stocks,p90:p90Stocks}, coverage:{p10:p10Cover,p50:p50Cover,p90:p90Cover} };
 }
 
 // Auto-size Start Stocks Needed for given cover
-function solveStartStocksNeeded(needs,coverInit,retireAge,targetSuccess=90,trials=1000,mean=0.05,stdev=0.18){
+function solveStartStocksNeeded(needs,coverInit,retireAge,targetSuccess=90,trialsInit=1000,mean=0.05,stdev=0.18){
   let L=0, U=50*(needs.reduce((a,b)=>a+b,0)/10+1);
   const baseSeed=123456;
-  const assess=(S0)=>monteCarlo(S0,needs,coverInit,retireAge,trials,mean,stdev,baseSeed).successPct;
-  let suc=assess(U), safety=0;
-  while (suc < targetSuccess && U < 50000000 && safety < 18) { U *= 1.8; safety++; suc = assess(U); }
+  let trials = trialsInit;
+  const assess=(S0,tArg=trials)=>monteCarlo(S0,needs,coverInit,retireAge,tArg,mean,stdev,baseSeed).successPct;
+  const stderrPct = (p100,n)=>{ const p=p100/100; return 100*Math.sqrt(Math.max(0,p*(1-p))/Math.max(1,n)); };
+  let suc=assess(U,trials), safety=0;
+  while (suc < targetSuccess && U < 50000000 && safety < 18) { U *= 1.8; safety++; suc = assess(U,trials); }
   if (suc < targetSuccess) return { feasible:false, needed:null, maxSuccessPct:suc, bound:U };
-  for (let iter=0; iter<24; iter++){ const M=0.5*(L+U); const s=assess(M); if(s>=targetSuccess) U=M; else L=M; if (Math.abs(U-L)<1000) break; }
-  return { feasible:true, needed:U, maxSuccessPct:suc, bound:U };
+  for (let iter=0; iter<24; iter++){ const M=0.5*(L+U); const s=assess(M,trials); if(s>=targetSuccess) U=M; else L=M; if (Math.abs(U-L)<1000) break; }
+  // Adaptive refine near the threshold
+  for (let pass=0; pass<2; pass++){
+    const sU = assess(U,trials);
+    const se = stderrPct(sU,trials);
+    if (Math.abs(sU - targetSuccess) <= 1.2 && se > 0.6 && trials < 5000) {
+      trials = Math.min(5000, trials + 2000);
+      for (let iter=0; iter<14; iter++){ const M=0.5*(L+U); const s=assess(M,trials); if(s>=targetSuccess) U=M; else L=M; if (Math.abs(U-L)<800) break; }
+    } else { break; }
+  }
+  return { feasible:true, needed:U, maxSuccessPct:assess(U,trials), bound:U, trialsUsed:trials, stderrPct: stderrPct(assess(U,trials), trials) };
 }
 
 // Minimum Starting Cash to make ≥90% achievable (optional guidance)
@@ -216,10 +230,9 @@ self.addEventListener('message',(e)=>{
   const { age, retireAge, spend, ss70, startCash, startStocks } = payload.inputs;
   const H=Math.max(0,95-retireAge);
   const needs=computeNeeds(spend,ss70,retireAge,H);
-  // Start Cash Needed: Year-1 need only (not full 10-year ladder)
+  // Start Cash Needed (v9): Year-1 need only (not full 10-year ladder)
   const startCashNeeded = (H>0? needs[0] : 0);
-  const startCashEffective = Math.max(startCash, startCashNeeded);
-  const ac=allocateStartingCash(startCashEffective,needs,H);
+  const ac=allocateStartingCash(startCash,needs,H);
   const coverInit=ac.cover, initialCoveredYears=ac.initialCoveredYears;
 
   // Solve stocks needed for user's actual cover (partial OK)
@@ -251,9 +264,10 @@ self.addEventListener('message',(e)=>{
     feasible90, maxSuccessCap,
     minCashFor90, stocksNeededAtMinCash,
     startCashNeeded, startStocksNeeded,
-    startingCash:startCashEffective, startingStocks:startStocks,
-    successPct: mc.successPct, firstTroubleYearAge: mc.firstTroubleYearAge,
+    startingCash:startCash, startingStocks:startStocks,
+    successPct: mc.successPct, successSE: mc.stderrPct, successTrials: mc.trials, firstTroubleYearAge: mc.firstTroubleYearAge,
     baselineRows, seriesYears: years, stocks: mc.stocks, coverage: mc.coverage,
-    initialCoveredYears
+    initialCoveredYears,
+    solverTrials: solve.trialsUsed, solverSE: solve.stderrPct
   }});
 });

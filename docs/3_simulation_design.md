@@ -1,4 +1,4 @@
-# 3) Simulation Design — v8 (updated HWM rule)
+# 3) Simulation Design
 
 ## Modeling (real terms)
 - **Stocks**: yearly **real** returns ~ Normal(**mean 5%**, **stdev 18%**), capped at −95% to avoid pathological tails.  
@@ -7,7 +7,7 @@
 
 ## Core mechanics
 1) **Need** per retirement year: `NEED[y] = max(0, spending − SS(y))`, with `SS(y)=SS70` for ages **≥ 70**, else 0.  
-2) **Start Cash Needed (v9)**: the first retirement year’s `NEED` only (1‑year cash at start). Longer ladders are optional and may be built over time via refills.  
+2) **Start Cash Needed**: the first retirement year’s `NEED` only (1‑year cash at start). Longer ladders are optional and may be built over time via refills.  
 3) **Allocate starting cash** into a year‑indexed cover array `cover[y]` for the earliest years (up to 10).  
 4) **Annual simulation**:
    - Spend from `cover[y]`. Any gap marks a **trouble** year in that path.  
@@ -23,16 +23,20 @@
 - If even very large `S0` can’t get ≥90% (due to early uncovered years + HWM), mark **feasible=false**.
 
 ### B. Minimum Starting Cash to make ≥90% achievable
-- Compute **Start Cash Needed** (full 10‑year target).  
+- Compute the **full 10‑year buffer** cash (sum of first `min(10,horizon)` years of `NEED`) as an upper bound.  
 - Test if a **full buffer** is feasible at any stock; if **not**, return `minCash=null` and show guidance.  
 - Otherwise, **bisection** between **current cash** and **full buffer** to find the **smallest cash** that makes ≥90% achievable; then re‑solve **Start Stocks Needed** at that cash.
 
 ## Outputs to UI
-- `startCashNeeded`, `startStocksNeeded` (for current cash), `feasible90`, `maxSuccessCap`.  
+- `startCashNeeded` (year‑1 need), `startStocksNeeded` (for current cash), `feasible90`, `maxSuccessCap`.  
 - If infeasible: `minCashFor90`, `stocksNeededAtMinCash`.  
 - Baseline rows (mean return): show `cashUsed`, `refillAmount`, end balances, and `fundedAhead` (count of funded years within the next 10; not necessarily contiguous).  
 - Series quantiles for **stocks** and **contiguous coverage** used in “typical range” charts.
 
-## Rounding
+## Rounding & Trials
 - **Start Stocks Needed** (display): round up to **$25k / $50k / $100k** steps by magnitude.  
 - **Start Cash Needed** (display): round up to **$1,000**.
+### Trials and Adaptive Batching
+- Default trials: **1,000** (interactive)
+- If the solver’s success rate at the **90%** threshold is within about **±1.2%** and the sampling error (SE) is **>0.6%**, increase trials to **3,000**, then **5,000** max, using common random numbers.
+- UI shows tooltips with the trials and SE used for the solver and for the displayed success metric.

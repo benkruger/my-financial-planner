@@ -1,4 +1,4 @@
-/* app.js — Client-only SPA (v6) */
+/* app.js — Client-only SPA */
 const $ = (sel, ctx=document) => ctx.querySelector(sel);
 const $$ = (sel, ctx=document) => Array.from(ctx.querySelectorAll(sel));
 
@@ -27,13 +27,18 @@ function showSection(id) {
   const sec = document.getElementById(id);
   if (sec) sec.classList.add('active');
   window.scrollTo({ top: 0, behavior: 'smooth' });
+  document.body.setAttribute('data-page', id);
+  if (id === 'inputs') {
+    setTimeout(() => {
+      const ageEl = document.getElementById('age');
+      if (ageEl) { ageEl.focus(); ageEl.select(); }
+    }, 50);
+  }
+  const backBtn = document.getElementById('backHeaderBtn');
+  if (backBtn) backBtn.classList.toggle('d-none', id !== 'results');
 }
 
-// Saved inputs
-const STORAGE_KEY = 'rp_inputs_v1';
-function loadSavedInputs() { try { return JSON.parse(localStorage.getItem(STORAGE_KEY)) || null; } catch { return null; } }
-function saveInputs(obj) { localStorage.setItem(STORAGE_KEY, JSON.stringify(obj)); }
-function clearSavedInputs() { localStorage.removeItem(STORAGE_KEY); }
+// Saved inputs removed (no localStorage persistence)
 
 // Derived hints
 function renderDerivedHints(age, retireAge) {
@@ -46,11 +51,13 @@ function renderDerivedHints(age, retireAge) {
 }
 
 // Chips and status
-function chip(label, valueHtml, tooltip='') {
+function chip(label, valueHtml, tooltip='', icon='', extraClass='', valueId='') {
   const col = document.createElement('div');
   col.className = 'col-sm-6 col-lg-4 col-xxl-3';
   const tip = tooltip ? `data-bs-toggle="tooltip" title="${tooltip.replace(/"/g, '&quot;')}"` : '';
-  col.innerHTML = `<div class="summary-chip" ${tip}><div class="label">${label}</div><div class="value">${valueHtml}</div></div>`;
+  const iconHtml = icon ? `<i class="bi ${icon} chip-icon"></i>` : '';
+  const idAttr = valueId ? `id="${valueId}"` : '';
+  col.innerHTML = `<div class="summary-chip ${extraClass}" ${tip}><div class="label">${iconHtml}${label}</div><div class="value" ${idAttr}>${valueHtml}</div></div>`;
   return col;
 }
 function statusBadge(status) {
@@ -105,8 +112,8 @@ function refreshTooltips() {
   }
 }
 
-// Worker (versioned to beat caches)
-const worker = new Worker('./sim-worker.js?v=7');
+// Worker
+const worker = new Worker('./sim-worker.js');
 let __lastRun = null; // { inputs, payload, meta }
 function runPlan(inputs) {
   return new Promise((resolve) => {
@@ -136,14 +143,45 @@ function renderSummary(payload) {
   const stocksStep = (startStocksNeededDisp != null && startStocksNeededDisp >= 500000) ? 25000 : 1000;
   const stocksStatus = (startStocksNeededDisp === null) ? 'Short' : ((payload.startingStocks < startStocksNeededDisp - stocksStep) ? 'Short' : (payload.startingStocks > startStocksNeededDisp + stocksStep ? 'Extra' : 'Enough'));
 
+  const accentForStatus = (s) => s === 'Short' ? 'chip-accent-short' : (s === 'Extra' ? 'chip-accent-extra' : 'chip-accent-enough');
+  const solverTip = `Auto-refined solver near 90%: n=${payload.solverTrials || 1000}, SE≈${(payload.solverSE||0).toFixed(2)}%`;
+  const mcTip = `Monte Carlo of current starting stocks: n=${payload.successTrials || 1000}, SE≈${(payload.successSE||0).toFixed(2)}%`;
   const chips = [
-    chip('Start Stocks Needed', (startStocksNeededDisp===null? '—' : formatMoney(startStocksNeededDisp)), 'Stocks at retirement that target ≥90% success with your current cash and policy. If this number still can\'t achieve ≥90%, we show the stock level tested at the search bound.'),
-    chip('Your Starting Cash', `${formatMoney(payload.startingCash)} ${statusBadge(cashStatus)}`, 'Year‑1 cash vs year‑1 need. Longer ladders are optional and may be built via refills.'),
-    chip('Your Starting Stocks', `${formatMoney(payload.startingStocks)} ${statusBadge(stocksStatus)}`, 'How your current stocks compare to what’s needed.'),
-    chip('Chance of success', formatPercent(payload.successPct), 'Out of 1,000 market “what‑ifs,” the share where your money lasts to age 95.')
+    chip('Start Stocks Needed', (startStocksNeededDisp===null? '—' : formatMoney(startStocksNeededDisp)), solverTip, 'bi-graph-up-arrow', 'chip-accent-primary'),
+    chip('Your Starting Cash', `${formatMoney(payload.startingCash)} ${statusBadge(cashStatus)}`, 'Year‑1 cash vs year‑1 need. Longer ladders are optional and may be built via refills.', 'bi-cash-coin', accentForStatus(cashStatus)),
+    chip('Your Starting Stocks', `${formatMoney(payload.startingStocks)} ${statusBadge(stocksStatus)}`, 'How your current stocks compare to what’s needed.', 'bi-piggy-bank', accentForStatus(stocksStatus)),
+    chip('Chance of success', formatPercent(payload.successPct), mcTip, 'bi-speedometer2', 'chip-accent-info', 'successValue')
   ];
   chips.forEach(c => sb.appendChild(c));
   refreshTooltips();
+
+  // Meta line: trials/SE summary under chips (always shown, subtle)
+  {
+    const dbg = document.createElement('div');
+    dbg.className = 'col-12';
+    const seSolve = (payload.solverSE||0).toFixed(2);
+    const seMc = (payload.successSE||0).toFixed(2);
+    const nSolve = payload.solverTrials || 1000;
+    const nMc = payload.successTrials || 1000;
+    dbg.innerHTML = `<div class="debug-line">Trials used — Solver: n=${nSolve}, SE≈${seSolve}% • MC: n=${nMc}, SE≈${seMc}%</div>`;
+    sb.appendChild(dbg);
+  }
+
+  // Animate success percentage
+  const succEl = document.getElementById('successValue');
+  if (succEl) {
+    const target = payload.successPct;
+    const start = 0;
+    const dur = 700; // ms
+    const t0 = performance.now();
+    function step(t){
+      const p = Math.min(1, (t - t0)/dur);
+      const val = start + (target - start) * (0.5 - Math.cos(Math.PI*p)/2);
+      succEl.textContent = `${val.toFixed(1)}%`;
+      if (p < 1) requestAnimationFrame(step);
+    }
+    requestAnimationFrame(step);
+  }
 
   // Banner: red when infeasible
   const banner = document.querySelector('.top-banner');
@@ -257,32 +295,20 @@ function validateInputs(inp) {
 
 // Boot
 document.addEventListener('DOMContentLoaded', () => {
+  // Debug query param to show extra actions
+  try {
+    const usp = new URLSearchParams(location.search);
+    const isDebug = (usp.get('debug') === 'true' || usp.has('debug'));
+    const dbg = document.getElementById('debugActions');
+    if (dbg && isDebug) dbg.classList.remove('d-none');
+  } catch {}
   // Navigation
   document.addEventListener('click', (e) => {
     const navEl = e.target.closest('[data-nav]');
     if (navEl) { e.preventDefault(); showSection(navEl.dataset.nav); }
   });
 
-  // Show resume if saved
-  if (loadSavedInputs()) document.getElementById('resumeBtn').classList.remove('d-none');
-
-  // Resume action
-  document.addEventListener('click', (e) => {
-    const resume = e.target.closest('[data-action="resume"]');
-    if (resume) {
-      const saved = loadSavedInputs();
-      if (saved) {
-        document.getElementById('age').value = saved.age;
-        document.getElementById('retireAge').value = saved.retireAge;
-        document.getElementById('spend').value = saved.spend ? formatMoney(saved.spend) : '';
-        document.getElementById('ss70').value = saved.ss70 ? formatMoney(saved.ss70) : '';
-        document.getElementById('startCash').value = saved.startCash ? formatMoney(saved.startCash) : '';
-        document.getElementById('startStocks').value = saved.startStocks ? formatMoney(saved.startStocks) : '';
-        renderDerivedHints(saved.age, saved.retireAge);
-        showSection('inputs');
-      }
-    }
-  });
+  // Resume/save removed
 
   wireMoneyFormatting();
 
@@ -297,19 +323,25 @@ document.addEventListener('DOMContentLoaded', () => {
   renderDerivedHints(58, 65);
 
   // Submit
-  document.getElementById('planForm').addEventListener('submit', async (e) => {
+  const form = document.getElementById('planForm');
+  form.addEventListener('submit', async (e) => {
     e.preventDefault();
+    // Use native validation first
+    if (!form.checkValidity()) { form.reportValidity(); return; }
     const inputs = collectInputs();
     const errs = validateInputs(inputs);
     if (errs.length) { alert('Please fix:\n• ' + errs.join('\n• ')); return; }
-    if (document.getElementById('saveToggle').checked) saveInputs(inputs);
+    // no-op: persistence removed
 
     const btn = document.querySelector('#planForm button[type="submit"]');
     btn.querySelector('.run-label').classList.add('d-none');
     btn.querySelector('.run-spinner').classList.remove('d-none');
+    const overlay = document.getElementById('loadingOverlay');
+    if (overlay) overlay.classList.remove('d-none');
 
     try {
-      const payload = await runPlan(inputs);
+      const minDelay = new Promise(res => setTimeout(res, 2000));
+      const payload = (await Promise.all([runPlan(inputs), minDelay]))[0];
       __lastRun = { inputs, payload, meta: { ts: new Date().toISOString(), trials: 1000, mean: 0.05, stdev: 0.18, policy: 'cash-only spending; refill on high-water-mark; 10-year max buffer' } };
       renderSummary(payload);
       renderInputSnapshot(inputs, payload);
@@ -322,6 +354,7 @@ document.addEventListener('DOMContentLoaded', () => {
     } finally {
       btn.querySelector('.run-label').classList.remove('d-none');
       btn.querySelector('.run-spinner').classList.add('d-none');
+      if (overlay) overlay.classList.add('d-none');
     }
   });
 

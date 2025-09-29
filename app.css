@@ -2,11 +2,22 @@
 .section { display: none; } .section.active { display: block; }
 .hero-gradient { background: radial-gradient(1200px 500px at 10% 10%, #2b6cb0 0%, #22577a 40%, #1b1f3b 100%); color:#fff; }
 .top-banner { background-color:#f8f9fa; }
-.summary-chip { border-radius:12px; border:1px solid var(--bs-border-color); padding:.75rem 1rem; height:100%; }
-.summary-chip .label { font-size:.8rem; color:var(--bs-secondary-color); }
-.summary-chip .value { font-size:1.05rem; font-weight:600; }
+.summary-chip { border-radius:14px; border:1px solid rgba(99,102,241,.28); padding:.9rem 1.1rem; height:100%; background: linear-gradient(180deg, #ffffff, #f6f7ff); box-shadow: 0 8px 18px rgba(99,102,241,.12); }
+.summary-chip .label { font-size:.8rem; color:#6b7280; font-weight:600; letter-spacing:.15px; display:flex; align-items:center; gap:.5rem; }
+.summary-chip .label .chip-icon{ color:#7dd3fc; font-size:1.05rem; }
+.summary-chip .value { font-size:1.15rem; font-weight:700; color:#111827; }
+/* Accents */
+.summary-chip.chip-accent-primary{ border-color: rgba(167,139,250,.45); box-shadow: 0 10px 22px rgba(167,139,250,.18); }
+.summary-chip.chip-accent-info{ border-color: rgba(99,102,241,.45); box-shadow: 0 10px 22px rgba(99,102,241,.18); }
+.summary-chip.chip-accent-enough{ border-color: rgba(16,185,129,.35); box-shadow: 0 10px 22px rgba(16,185,129,.14); }
+.summary-chip.chip-accent-extra{ border-color: rgba(59,130,246,.35); box-shadow: 0 10px 22px rgba(59,130,246,.16); }
+.summary-chip.chip-accent-short{ border-color: rgba(239,68,68,.40); box-shadow: 0 10px 22px rgba(239,68,68,.16); }
 .badge-status { font-size:.75rem; } .badge-status.short{background:#f8d7da;color:#842029;} .badge-status.enough{background:#d1e7dd;color:#0f5132;} .badge-status.extra{background:#cfe2ff;color:#084298;}
 /* remove per-cell shading to avoid row breaks */
 #baselineTable tbody tr.shortfall td{ background:#fde2e1; }
 /* Keep table rows single-line for readability */
 #baselineTable tbody td { white-space: nowrap; font-variant-numeric: tabular-nums; }
+/* Inputs page hint emphasis */
+.hint-line{ background: linear-gradient(180deg, rgba(99,102,241,.10), rgba(99,102,241,.06)); border:1px solid rgba(99,102,241,.35); color:#1f2937; padding:.6rem .8rem; border-radius:10px; }
+/* Debug info line */
+.debug-line{ font-size:.85rem; color:#6b7280; padding:.25rem .25rem 0; }

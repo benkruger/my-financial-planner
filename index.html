@@ -3,112 +3,153 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Retirement Planner — Cash & Stocks Needed</title>
-  <meta name="description" content="Know the cash and stock you need to retire with confidence — in today's dollars, tested against tough markets.">
+  <title>Retirement Planner — Polished</title>
+  <meta name="description" content="A polished, elegant view of the retirement planner with the same engine.">
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
   <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" rel="stylesheet">
-  <link href="./app.css?v=7" rel="stylesheet">
+  <link href="./app.css" rel="stylesheet">
+  <style>
+    :root{
+      --brand-1:#0ea5e9; /* sky-500 */
+      --brand-2:#8b5cf6; /* violet-500 */
+      --ink:#111827;
+      --header-h:56px; /* mobile navbar height approx */
+    }
+    @media (min-width: 992px){ :root{ --header-h:64px; } }
+    .hero-pretty{
+      background: radial-gradient(1200px 500px at 15% 10%, rgba(14,165,233,.35) 0%, rgba(139,92,246,.35) 35%, rgba(17,24,39,1) 100%),
+                  linear-gradient(135deg, #0b162b 0%, #111827 100%);
+      color:#fff;
+    }
+    /* Make hero fill viewport on desktop; relax on mobile */
+    .hero-pretty{ padding-top: 0; min-height: calc(100vh - var(--header-h)); }
+    .glass{ background: rgba(255,255,255,.08); border: 1px solid rgba(255,255,255,.18); border-radius:16px; backdrop-filter: blur(8px); }
+    .btn-hero{ background:linear-gradient(90deg,#5ac8fa,#a78bfa); border:none; border-radius:12px; box-shadow:0 6px 14px rgba(90,200,250,.18), 0 2px 6px rgba(167,139,250,.22); }
+    .btn-hero:hover{ filter: brightness(1.03); box-shadow:0 8px 18px rgba(90,200,250,.20), 0 3px 8px rgba(167,139,250,.24); }
+    .brand-badge{ display:inline-flex; align-items:center; gap:.5rem; padding:.4rem .7rem; border-radius:12px; background:rgba(255,255,255,.12); }
+    .brand-badge i{ color:#fff; }
+    .lead-tight{ letter-spacing:.1px; }
+    .card-elev{ border:0; box-shadow:0 10px 30px rgba(0,0,0,.12); border-radius:14px; }
+    /* CTA container: constrains width on desktop, full width on mobile */
+    .cta-holder{ max-width: 380px; }
+    @media (max-width: 575.98px){ .cta-holder{ width:100%; max-width:100%; margin-left:auto; margin-right:auto; } }
+    /* Header brand + hero badge: match CTA width on mobile */
+    @media (max-width: 575.98px){
+      .navbar .navbar-brand{ width:100%; display:flex; justify-content:center; }
+      .brand-badge{ width:100%; justify-content:center; padding:.6rem .9rem; margin-bottom:.5rem; }
+    }
+    /* Override: on results page, keep brand left (all sizes) */
+    body[data-page="results"] .navbar .navbar-brand{ width:auto; display:inline-flex; justify-content:flex-start; }
+    /* Tighten navbar vertical space to pull hero up */
+    .navbar{ padding-top:.25rem; padding-bottom:.25rem; }
+    @media (min-width: 992px){ .navbar{ padding-top:.4rem; padding-bottom:.4rem; } }
+    /* Readability helpers */
+    .measure{ max-width: 60ch; }
+    .hero-points{ list-style:none; padding:0; }
+    .hero-points li{ display:flex; align-items:flex-start; gap:.5rem; margin:.25rem 0; }
+    .hero-points .icon{ color:#93c5fd; margin-top:.15rem; }
+    /* Hero layout height */
+    .hero-row{ min-height: calc(100vh - var(--header-h) - 2rem); }
+    /* Ensure hero covers viewport on all sizes (no white gap) */
+    /* CTA placement rules (avoid Bootstrap d-grid conflicts) */
+    .cta-desktop{ display:none !important; }
+    .cta-mobile{ display:block; }
+    @media (min-width: 992px){
+      .cta-desktop{ display:block !important; }
+      .cta-mobile{ display:none; }
+    }
+    /* Make the mobile CTA always visible at the bottom */
+    @media (max-width: 991.98px){
+      .cta-mobile{ position: sticky; bottom: 0; z-index: 5; padding-top:.5rem; }
+      .cta-mobile .btn{ margin-bottom: env(safe-area-inset-bottom, 12px); }
+    }
+    /* Heading helper for split line */
+    .h1-sub{ display:block; color:rgba(255,255,255,.85); font-weight:700; }
+    /* Overlay loader */
+    .loading-overlay{ position:fixed; inset:0; background:rgba(11,22,43,.6); backdrop-filter: blur(4px); display:flex; align-items:center; justify-content:center; z-index:1050; }
+    .loading-overlay .orb{ width:64px; height:64px; border-radius:50%; background:conic-gradient(from 0deg, #5ac8fa, #a78bfa, #5ac8fa); -webkit-mask: radial-gradient(circle 24px, #0000 96%, #000); animation: spin 1s linear infinite; }
+    .loading-overlay .msg{ color:#e5e7eb; margin-top:12px; text-align:center; font-weight:600; letter-spacing:.2px; }
+    @keyframes spin { to{ transform: rotate(360deg); } }
+  </style>
 </head>
 <body>
-  <header class="navbar navbar-expand-lg bg-body-tertiary border-bottom">
-    <div class="container">
-      <a class="navbar-brand fw-semibold" href="#" data-nav="landing">Retirement Planner</a>
-      <div class="d-flex gap-2">
-        <button class="btn btn-outline-secondary btn-sm" data-nav="landing" type="button">Home</button>
-        <button class="btn btn-primary btn-sm" data-nav="inputs" type="button">Get Started</button>
+  <header class="navbar navbar-expand-lg border-0" style="background:#0b162b;">
+    <div class="container d-flex align-items-center">
+      <a class="navbar-brand fw-semibold text-white me-2" href="#" data-nav="landing"><span class="brand-badge"><i class="bi bi-stars"></i>Retirement Planner</span></a>
+      <div class="ms-auto">
+        <button id="backHeaderBtn" class="btn btn-outline-light btn-sm d-none" data-nav="inputs" type="button"><i class="bi bi-arrow-left me-1"></i>Back to Inputs</button>
       </div>
     </div>
   </header>
 
-  <!-- Page 1: Marketing / Landing -->
+  <!-- Landing -->
   <section id="landing" class="section active">
-    <div class="hero-gradient py-5">
-      <div class="container py-4">
-        <div class="row align-items-center g-4">
-          <div class="col-lg-7">
-            <h1 class="display-5 fw-bold text-white lh-tight">Know the cash and stock you need to retire with confidence.</h1>
-            <p class="lead text-white-50 mt-3">Two answers. One plan. All in today's dollars, tested against tough markets.</p>
-            <div class="d-flex gap-2 mt-3">
-              <button class="btn btn-light btn-lg" data-nav="inputs" type="button">
-                <i class="bi bi-play-circle-fill me-2"></i>Get Started
-              </button>
-              <button id="resumeBtn" class="btn btn-outline-light btn-lg d-none" data-action="resume" type="button">
-                <i class="bi bi-arrow-counterclockwise me-2"></i>Resume Last Plan
-              </button>
+    <div class="hero-pretty">
+      <div class="container pt-4 pt-lg-5 pb-5 pb-lg-5">
+        <div class="row hero-row align-items-stretch g-3 g-lg-4">
+          <div class="col-lg-7 left-hero d-flex flex-column">
+            <div class="measure">
+              <div class="brand-badge mb-2"><i class="bi bi-shield-check"></i><span>Today’s dollars • Real returns</span></div>
+              <h1 class="display-5 fw-bold lh-tight mb-2">Two clear numbers! <span class="h1-sub">Retire with confidence.</span></h1>
+              <ul class="hero-points text-white-50 mt-2 mb-0">
+                <li><i class="bi bi-cash-coin icon"></i><span>Start Cash Needed</span></li>
+                <li><i class="bi bi-graph-up icon"></i><span>Start Stocks Needed</span></li>
+                <li><i class="bi bi-shield-check icon"></i><span>Tough‑market test</span></li>
+                <li><i class="bi bi-arrow-repeat icon"></i><span>Refill stocks only after recovery</span></li>
+              </ul>
             </div>
-            <p class="small text-white-50 mt-3 mb-0">
-              We use <strong>today's dollars</strong> (inflation-adjusted) and <strong>real, after-inflation</strong> stock returns.
-              We never sell stocks to pay living costs—only to refill your cash buffer.
-            </p>
+            <div class="mt-3 cta-holder cta-desktop">
+              <button class="btn btn-hero btn-lg text-white w-100" data-nav="inputs" type="button">Get Started</button>
+            </div>
           </div>
           <div class="col-lg-5">
-            <div class="card shadow-lg border-0">
-              <div class="card-body">
-                <div class="d-flex align-items-center mb-3">
-                  <i class="bi bi-shield-check text-primary fs-3 me-2"></i>
-                  <div><strong>10-Year Cash Buffer</strong><br><span class="text-muted small">Set aside up to 10 years in safe money.</span></div>
-                </div>
-                <div class="d-flex align-items-center mb-3">
-                  <i class="bi bi-graph-up-arrow text-primary fs-3 me-2"></i>
-                  <div><strong>Stocks Refill on Recovery</strong><br><span class="text-muted small">We only sell after markets truly recover.</span></div>
-                </div>
-                <div class="d-flex align-items-center">
-                  <i class="bi bi-bullseye text-primary fs-3 me-2"></i>
-                  <div><strong>Age-95 Confidence</strong><br><span class="text-muted small">Plan to age 95 using real returns.</span></div>
-                </div>
-                <hr class="my-4">
-                <div class="d-flex justify-content-between align-items-center">
-                  <div>
-                    <div class="small text-muted">Sample preview</div>
-                    <div class="fw-semibold">Start Cash Needed: <span class="text-success">$480,000</span></div>
-                    <div class="fw-semibold">Start Stocks Needed: <span class="text-success">$1,050,000</span></div>
-                  </div>
-                  <button class="btn btn-outline-primary" data-nav="inputs" type="button">Try my numbers</button>
-                </div>
-              </div>
+            <div class="glass p-4">
+              <div class="d-flex align-items-center mb-3"><i class="bi bi-graph-up-arrow text-info fs-4 me-2"></i><div><strong>Stocks refill on recovery</strong><br><span class="text-white-50 small">We never spend stocks on living costs.</span></div></div>
+              <div class="d-flex align-items-center mb-3"><i class="bi bi-cash-coin text-info fs-4 me-2"></i><div><strong>10‑year cash buffer</strong><br><span class="text-white-50 small">Optional ladder, built over time.</span></div></div>
+              <div class="d-flex align-items-center"><i class="bi bi-bullseye text-info fs-4 me-2"></i><div><strong>Age‑95 confidence</strong><br><span class="text-white-50 small">Target ≥90% across 1,000 trials.</span></div></div>
             </div>
           </div>
+        </div>
+        <!-- Mobile-only CTA at the very end -->
+        <div class="mt-3 cta-holder cta-mobile">
+          <button class="btn btn-hero btn-lg text-white w-100" data-nav="inputs" type="button">Get Started</button>
         </div>
       </div>
     </div>
   </section>
 
-  <!-- Page 2: Inputs -->
+  <!-- Inputs -->
   <section id="inputs" class="section">
-    <div class="container py-5">
+    <div class="hero-pretty">
+    <div class="container py-4 py-lg-5">
       <div class="row justify-content-center">
-        <div class="col-lg-9">
-          <div class="card shadow-sm">
+        <div class="col-lg-8">
+          <div class="card card-elev">
             <div class="card-body p-4">
-              <h2 class="h4 mb-3">Plan Setup</h2>
+              <h2 class="h4 mb-1">Plan Setup</h2>
               <p class="text-muted mb-4">Enter 6 numbers. Everything is in <strong>today's dollars</strong>.</p>
               <form id="planForm" novalidate>
                 <div class="row g-3">
                   <div class="col-md-6">
                     <label class="form-label">Your age</label>
                     <input type="text" inputmode="numeric" pattern="\d*" class="form-control" id="age" placeholder="58" required>
-                    <div class="form-text">Whole years.</div>
                   </div>
                   <div class="col-md-6">
                     <label class="form-label">Retirement age</label>
                     <input type="text" inputmode="numeric" pattern="\d*" class="form-control" id="retireAge" placeholder="65" required>
                     <div class="form-text">Must be ≥ your current age.</div>
                   </div>
-
                   <div class="col-md-6">
-                    <label class="form-label">All-in yearly spending (today's $)</label>
+                    <label class="form-label">All‑in yearly spending (today's $)</label>
                     <input type="text" class="form-control money" id="spend" placeholder="$120,000" required>
-                    <div class="form-text">One number: home, bills, healthcare, taxes, everything.</div>
                   </div>
                   <div class="col-md-6">
-                    <label class="form-label">Social Security at age 70 (today's $/yr)</label>
+                    <label class="form-label">Social Security at 70 (today's $/yr)</label>
                     <input type="text" class="form-control money" id="ss70" placeholder="$36,000" required>
                   </div>
-
                   <div class="col-md-6">
                     <label class="form-label">Starting Cash</label>
                     <input type="text" class="form-control money" id="startCash" placeholder="$400,000" required>
-                    <div class="form-text">Safe money for your cash buffer (cash/Treasuries).</div>
                   </div>
                   <div class="col-md-6">
                     <label class="form-label">Starting Stocks</label>
@@ -117,55 +158,45 @@
                 </div>
 
                 <hr class="my-4">
-                <div class="form-check form-switch">
-                  <input class="form-check-input" type="checkbox" role="switch" id="saveToggle" checked>
-                  <label class="form-check-label" for="saveToggle">Save last inputs on this device</label>
-                </div>
-                <div class="d-flex gap-2 mt-3">
-                  <button type="button" class="btn btn-secondary" data-nav="landing">Cancel</button>
-                  <button type="submit" class="btn btn-primary">
+                <div class="mt-3">
+                  <button type="submit" class="btn btn-hero text-white w-100 btn-lg">
                     <span class="run-label"><i class="bi bi-cpu me-2"></i>Run Plan</span>
                     <span class="run-spinner d-none spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
                   </button>
                 </div>
-                <div class="text-muted small mt-3" id="derivedHints"></div>
+                <div class="hint-line small mt-3" id="derivedHints"></div>
               </form>
             </div>
           </div>
         </div>
       </div>
     </div>
+    </div>
   </section>
 
-  <!-- Page 3: Results -->
+  <!-- Results -->
   <section id="results" class="section">
     <div class="top-banner text-center small text-muted py-2 border-bottom">
-      All amounts are in <strong>today's dollars</strong> (inflation-adjusted). We use <strong>real, after-inflation</strong> market returns.
+      All amounts are in <strong>today's dollars</strong>. Stocks use <strong>real, after‑inflation</strong> returns. We only sell stocks to refill the cash buffer after a recovery.
     </div>
     <div class="container-fluid py-4">
-      <!-- Summary bar -->
       <div id="summaryBar" class="row g-3"></div>
 
-      <!-- Input snapshot -->
-          <div class="card shadow-sm mt-4">
+          <div class="card card-elev mt-4">
             <div class="card-body">
               <div class="d-flex justify-content-between align-items-center mb-2">
                 <h3 class="h6 mb-0">Input Snapshot</h3>
-                <div class="d-flex gap-2">
-                  <button class="btn btn-sm btn-outline-secondary" data-action="export-json" type="button"><i class="bi bi-download me-1"></i>Export Results (JSON)</button>
-                  <button class="btn btn-sm btn-primary" data-nav="inputs" type="button"><i class="bi bi-arrow-left me-1"></i>← Back to Inputs</button>
-                </div>
+                <div class="d-flex gap-2"></div>
               </div>
               <div id="inputSnapshot" class="row small gy-1"></div>
             </div>
-      </div>
+          </div>
 
-      <!-- Baseline table -->
-      <div class="card shadow-sm mt-4">
+      <div class="card card-elev mt-4">
         <div class="card-body">
           <div class="d-flex justify-content-between align-items-center">
             <h3 class="h6 mb-0">Baseline (representative path)</h3>
-            <div class="small text-muted">Not a forecast—one illustrative path with ups & downs.</div>
+            <div class="small text-muted">One illustrative path with ups & downs.</div>
           </div>
           <div class="table-responsive mt-3">
             <table class="table table-sm align-middle" id="baselineTable">
@@ -178,33 +209,31 @@
                   <th>Cash used</th>
                   <th>Sold (emergency)</th>
                   <th>Sold (recovery)</th>
-                  <th data-bs-toggle="tooltip" title="Total cash earmarked for future coverage after this year (not immediately spendable).">Future coverage cash (earmarked)</th>
-                  <th>Stocks balance (end)</th>
-                  <th data-bs-toggle="tooltip" title="Number of funded years ahead within the next 10 years (not necessarily contiguous).">Funded years ahead (next 10)</th>
+                  <th>Future coverage cash (earmarked)</th>
+                  <th>Stocks ending</th>
+                  <th>Funded years ahead (10)</th>
                 </tr>
               </thead>
               <tbody></tbody>
             </table>
           </div>
-          <div class="small text-muted mt-2">We only sell stocks to refill the cash buffer after a drawdown and subsequent recovery (high‑water‑mark).</div>
         </div>
       </div>
 
-      <!-- Visual appendix -->
       <div class="row g-3 mt-4">
         <div class="col-lg-6">
-          <div class="card shadow-sm h-100">
+          <div class="card card-elev h-100">
             <div class="card-body">
-              <h3 class="h6">Ladder total (notes earmarked)</h3>
+              <h3 class="h6">Ladder total (earmarked)</h3>
               <canvas id="lineLadder" height="180"></canvas>
-              <div class="small text-muted mt-2">Total cash earmarked in the ladder after each year (baseline path).</div>
+              <div class="small text-muted mt-2">Cash earmarked in the ladder after each year (baseline path).</div>
             </div>
           </div>
         </div>
         <div class="col-lg-6">
-          <div class="card shadow-sm h-100">
+          <div class="card card-elev h-100">
             <div class="card-body">
-              <h3 class="h6">Stocks balance (baseline path)</h3>
+              <h3 class="h6">Stocks balance (baseline)</h3>
               <canvas id="lineStocksBaseline" height="180"></canvas>
               <div class="small text-muted mt-2">Stocks after each year along the baseline path.</div>
             </div>
@@ -212,14 +241,21 @@
         </div>
       </div>
 
-      <div class="text-center my-4">
-        <button class="btn btn-primary" data-nav="inputs" type="button"><i class="bi bi-arrow-left me-2"></i>← Back to Inputs</button>
+      <div id="debugActions" class="text-center my-4 d-none">
+        <button class="btn btn-outline-secondary" data-action="export-json" type="button"><i class="bi bi-download me-1"></i>Export Results (JSON)</button>
       </div>
     </div>
   </section>
 
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
-  <script src="./app.js?v=7"></script>
+  <script src="./app.js"></script>
+  <!-- Loading Overlay -->
+  <div id="loadingOverlay" class="loading-overlay d-none">
+    <div class="text-center">
+      <div class="orb mx-auto"></div>
+      <div class="msg">Crunching 1,000 what‑ifs…</div>
+    </div>
+  </div>
 </body>
 </html>

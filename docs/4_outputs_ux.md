@@ -1,8 +1,8 @@
-# 4) Outputs & UX — v8 (LOCKED)
+# 4) Outputs & UX
 
 ## Pages
-1) **Landing** — value prop, CTAs (Get Started / Resume).  
-2) **Inputs** — 6 fields with live currency formatting; “Save last inputs” **ON by default**.  
+1) **Landing** — value prop, CTA (Get Started).  
+2) **Inputs** — 6 fields with live currency formatting; the **Your age** field auto‑focuses.  
 3) **Results** — summary chips, **Recommendations**, input snapshot, baseline table, charts.
 
 ## Summary chips
@@ -26,7 +26,8 @@
 
 ## Snapshot & Actions
 - Input Snapshot shows your inputs + initial coverage.  
-- Primary **“Back to Inputs”** button replaces “Edit” and “Copy Snapshot” (removed).
+- **Back to Inputs** appears in the header (not at the bottom).
+- “Export Results (JSON)” is hidden by default; it appears at the bottom only when the URL contains `?debug=true` (or `?debug`).
 
 ## Baseline & Charts
 - **Baseline table** (representative path): Year/Age, Spending, SS, Cash used, **Sold (emergency)**, **Sold (recovery)**, Future coverage cash (earmarked), Stocks ending, and **Funded years ahead (next 10)**. The baseline is a single illustrative Monte Carlo path (fixed seed) that includes drawdowns and recoveries.  

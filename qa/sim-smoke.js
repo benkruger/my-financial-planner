@@ -3,6 +3,7 @@
 
 const fs = require('fs');
 const vm = require('vm');
+let __FAILS = 0;
 
 function loadSim() {
   const code = fs.readFileSync('sim-worker.js', 'utf8');
@@ -37,9 +38,9 @@ function assessSuccess(ctx, params) {
 }
 
 function nearlyEqual(a, b, tol = 1e-6) { return Math.abs(a - b) <= tol; }
-function assert(condition, msg) { if (!condition) { console.error('ASSERT FAIL:', msg); process.exitCode = 1; } }
-function assertEq(actual, expected, msg) { if (actual !== expected) { console.error('ASSERT FAIL:', msg, 'expected=', expected, 'actual=', actual); process.exitCode = 1; } }
-function assertClose(actual, expected, tol, msg) { if (!nearlyEqual(actual, expected, tol)) { console.error('ASSERT FAIL:', msg, 'expected≈', expected, 'actual=', actual); process.exitCode = 1; } }
+function assert(condition, msg) { if (!condition) { console.error('ASSERT FAIL:', msg); __FAILS++; process.exitCode = 1; } }
+function assertEq(actual, expected, msg) { if (actual !== expected) { console.error('ASSERT FAIL:', msg, 'expected=', expected, 'actual=', actual); __FAILS++; process.exitCode = 1; } }
+function assertClose(actual, expected, tol, msg) { if (!nearlyEqual(actual, expected, tol)) { console.error('ASSERT FAIL:', msg, 'expected≈', expected, 'actual=', actual); __FAILS++; process.exitCode = 1; } }
 
 function testInvariants(ctx) {
   // Zero-need => success 100%
@@ -130,6 +131,31 @@ function runUserScenario(ctx) {
   assert(cCurve[1] >= cCurve[0] - 1e-9 && cCurve[2] >= cCurve[1] - 1e-9, 'User scenario: cash monotonicity');
 }
 
+function testMetadataAndRepro(ctx) {
+  const inp = { age:58, retireAge:65, spend:120000, ss70:36000, startCash:400000, startStocks:900000 };
+  const p1 = computePayload(ctx, inp);
+  const p2 = computePayload(ctx, inp);
+  // Reproducibility: deterministic seeds → identical results
+  assertEq(p1.startStocksNeeded, p2.startStocksNeeded, 'Repro: startStocksNeeded should match across runs');
+  assertEq(p1.successPct, p2.successPct, 'Repro: successPct should match across runs');
+  assertEq(p1.startingCash, inp.startCash, 'startingCash should equal user input');
+  // Metadata presence bounds
+  assert(p1.successTrials >= 1000 && p1.successTrials <= 5000, 'MC trials should be between 1k and 5k');
+  assert(p1.solverTrials >= 1000 && p1.solverTrials <= 5000, 'Solver trials should be between 1k and 5k');
+  assert(typeof p1.successSE === 'number', 'successSE missing');
+  assert(typeof p1.solverSE === 'number', 'solverSE missing');
+}
+
+function testStocksNeededMonotoneByCash(ctx) {
+  const base = { age:58, retireAge:65, spend:120000, ss70:36000 };
+  const cashes = [200000, 400000, 800000, 1020000];
+  const values = cashes.map(C => computePayload(ctx, { ...base, startCash: C, startStocks: 0 }).startStocksNeeded);
+  // Non-increasing with more cash (allow small numerical chatter ≤ $5k)
+  for (let i=1;i<values.length;i++) {
+    assert(values[i] <= values[i-1] + 5000, `StartStocksNeeded should not increase with more cash: ${values[i-1]} -> ${values[i]}`);
+  }
+}
+
 function main() {
   const ctx = loadSim();
   // Export helpers present
@@ -140,6 +166,27 @@ function main() {
 
   // Run user scenario checks
   runUserScenario(ctx);
+  testMetadataAndRepro(ctx);
+  testStocksNeededMonotoneByCash(ctx);
+
+  // Baseline recovery reserves/invariants (debug data)
+  (function testBaselineRecoveryReserves(){
+    const inp = { age:58, retireAge:65, spend:120000, ss70:36000, startCash:400000, startStocks:1500000 };
+    const H=Math.max(0,95-inp.retireAge);
+    const needs=ctx.computeNeeds(inp.spend,inp.ss70,inp.retireAge,H);
+    const cover=ctx.allocateStartingCash(inp.startCash,needs,H).cover;
+    const rows = ctx.baselineTable(inp.startStocks,needs,cover,inp.retireAge,inp.age,0.05,0.18,246813);
+    let checked=false;
+    for (const r of rows){
+      if (r.debug && r.debug.recovery && r.debug.recovery.triggered){
+        const d=r.debug.recovery;
+        assert(d.saleBudget <= d.reserveCap + 1e-6, 'Recovery sale should respect reserve cap');
+        assert(d.S_after >= 0.7*d.S_before - 1e-6, 'Post-recovery stocks should respect 70% reserve');
+        checked=true; break;
+      }
+    }
+    assert(checked, 'No recovery sale present in baseline to validate');
+  })();
   const cases = [
     { name: 'Baseline 58→65 spend120k ss36k cash400k stocks900k', inp: { age:58, retireAge:65, spend:120000, ss70:36000, startCash:400000, startStocks:900000 } },
     { name: 'Lower spend 55→62 spend60k ss30k cash300k stocks1.5M', inp: { age:55, retireAge:62, spend:60000, ss70:30000, startCash:300000, startStocks:1500000 } },
@@ -213,6 +260,12 @@ function main() {
     }
     assert(found, 'Did not encounter a recovery sale to test');
   })();
+
+  if (__FAILS === 0) {
+    console.log('\nQA PASS');
+  } else {
+    console.log(`\nQA FAIL — ${__FAILS} assertion(s) failed`);
+  }
 }
 
 if (require.main === module) main();

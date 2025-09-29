@@ -1,4 +1,4 @@
-# 2) Inputs — v8 (LOCKED)
+# 2) Inputs
 
 All amounts are in **today’s dollars**. Formatting adds `$` and commas as you type.
 
@@ -10,9 +10,11 @@ All amounts are in **today’s dollars**. Formatting adds `$` and commas as you 
 5. **Starting Cash**  
 6. **Starting Stocks**  
 
-### Defaults & Hints
-- **Save last inputs on this device**: **ON by default** (localStorage).  
-- Derived hint under the form shows **retirement year** and **SS start year**.
+### Hints
+- Derived hint below the form shows **retirement year** and **SS start year**; the line is emphasized for clarity.
+
+### Behavior
+- The **Your age** field is focused automatically when Inputs opens.
 
 ### Validation
 - Non‑negative amounts.  
